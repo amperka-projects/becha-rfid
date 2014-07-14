@@ -1,0 +1,203 @@
+#!/usr/bin/ruby19
+
+require 'pathname'
+require 'optparse'
+require 'optparse/time'
+require 'ostruct'
+require 'socket'
+require 'yaml'
+require 'mplayer-ruby'
+
+ARGV_COUNT = 1
+
+class Pathname
+  def extname= (extension)
+    @path = @path[0..@path.length-extname.length-1]
+    if extension.length > 0
+      @path << '.' if extension[0] != '.'
+      @path << extension.to_s
+    end
+  end
+
+  def chext (extension)
+    res = self.clone
+    res.extname = extension
+
+    res
+  end
+end
+
+APP_VERSION = 'BECHA-server v0.1'
+
+def parse_options(args)
+    options = OpenStruct.new
+
+    opt_parser = OptionParser.new do |opts|
+      opts.banner = "Usage: becha-server [options] cmd [args]\n\n" +
+      "Avalaible commands:\n" +
+      "  power-on\t\t- Power ON the tape recorder\n" +
+      "  record track-path\t\t- Record track into the tape recorder"
+
+      options.verbose = false
+      options.playlist_path = Pathname.new 'becha-playlist.conf'
+      options.log_path = Pathname.new '/var/log/becha.log'
+      options.errlog_path = Pathname.new '/var/log/becha.error.log'
+
+      opts.separator ""
+      opts.separator "Common options:"
+
+      opts.on("-p", "--playlist path", String, "Define playlist information") do |path|
+        options.playlist_path = Pathname.new path
+      end
+
+      opts.on("-l", "--log path", String, "Define log file") do |path|
+        options.log_path = Pathname.new path
+      end
+
+      opts.on("-L", "--errlog path", String, "Define log file for errors") do |path|
+        options.errlog_path = Pathname.new path
+      end
+
+      opts.on("--verbose", "Print extra information") do
+        options.verbose = true
+      end
+
+      opts.on_tail("-h", "--help", "Show this message") do
+        puts opts
+        exit
+      end
+
+      opts.on_tail("--version", "Show version") do
+        puts APP_VERSION
+        exit
+      end
+    end
+
+    opt_parser.parse!(args)
+    [options, opt_parser]
+  end
+
+res = parse_options(ARGV)
+options = res[0]
+opt_parser = res[1]
+
+if ARGV.count < ARGV_COUNT
+  p opt_parser
+
+  exit 1
+end
+
+argv = ARGV.reverse
+
+cmd = argv.pop
+
+
+case cmd
+when 'power-on'
+  playlist_path = Pathname.new(options.playlist_path.expand_path)
+  playlist = YAML::load(IO.read playlist_path.expand_path)
+
+  raise 'Config file is corrupted' unless playlist.class == Hash
+
+  puts "Starting daemon..."
+
+  Process.daemon
+
+  STDOUT.reopen options.log_path.expand_path, 'a'
+  STDERR.reopen options.errlog_path.expand_path, 'a'
+
+  $stdout = STDOUT
+  $stderr = STDERR
+
+  STDOUT.sync = true
+  STDERR.sync = true
+
+  sock = UDPSocket.new
+  sock.bind '', 2000
+
+  puts "[#{Time.now}] Server started!"
+
+  loop do
+    packet = sock.recvfrom 24
+
+    if packet[0] == "quit"
+      puts "[#{Time.now}] Exiting..."
+      exit 0
+    end
+
+    puts "[#{Time.now}] Received data: #{packet[0].to_s}"
+
+    if playlist.has_key? packet[0].to_s
+      puts "[#{Time.now}] Start playing: #{playlist[packet[0].to_s]}"
+
+      begin
+        $mplayer.quit unless $mplayer.nil?
+        $mplayer = MPlayer::Slave.new "#{playlist[packet[0].to_s]}"
+      rescue => error
+        puts 'Error playing'
+        p error
+        p "#{playlist[packet[0].to_s]}"
+        $mplayer = nil
+      end
+
+    else
+      puts "[#{Time.now}] Item not found"
+
+      begin
+        $mplayer.quit unless $mplayer.nil?
+      rescue
+        $mplayer = nil
+      end
+    end
+  end
+  loop do
+  end
+when 'record'
+  playlist_path = Pathname.new options.playlist_path.expand_path
+  begin
+    playlist = YAML::load IO.read playlist_path.expand_path
+  rescue
+    playlist = {}
+  end
+
+  raise 'Config file is corrupted' unless playlist.class == Hash
+
+  track_path = argv.pop
+
+  p opt_parser if track_path.nil?
+
+  track_path = Pathname.new(track_path).expand_path
+
+  sock = UDPSocket.new
+  sock.bind '', 2000
+
+  loop do
+    packet = sock.recvfrom 24
+
+    if packet[0].length == 0
+      puts "Received error packet, retrying..."
+    else
+      playlist[packet[0]] = track_path
+      IO.write playlist_path.expand_path, YAML::dump(playlist)
+
+      if playlist == YAML::load(IO.read playlist_path.expand_path)
+        puts "Recording successful: #{packet[0]} -> #{track_path}"
+        break
+      else
+        puts "Recording error!"
+        p playlist
+        p '---'
+        p YAML::load(IO.read playlist_path.expand_path)
+      end
+    end
+  end
+else
+  p 'Undefined command'
+  p opt_parser
+  exit 1
+end
+
+exit 0
+
+# vim: sw=2 sts=2 ts=8:
+
