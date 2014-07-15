@@ -9,124 +9,85 @@ We use Arduino Leonardo
 #define UDP_LOCAL_PORT     2014
 
 #define MY_SSID "Amperka.ru"
+#define LED_PIN 13
 
-/*
-void setupUDP()
-{
-  Serial1.print("$$$");
-  delay(100);
-  Serial1.println("set ip proto 1");           // enable UDP as the protocol
-  delay(100);
-
-  Serial1.print("set ip host "); // set the IP address of remote host
-  Serial1.println(UDP_HOST_IP);
-  delay(100);
-
-  Serial1.print("set ip remote ");     // set the remote port number on which the host is listening
-  Serial1.println(UDP_REMOTE_PORT);
-  delay(100);
-
-  Serial1.print("set ip local ");      // set the port number on which the WiFly module will listen
-  Serial1.println(UDP_LOCAL_PORT);
-  delay(100);
-
-  Serial1.println("save");                     // saves the settings in config file
-  delay(100);
-
-  Serial1.println("reboot");                   // reboots the module so that the above settings take effect
-  delay(100);
-
-}
-
-*/
 
 SoftwareSerial mySerial(10, 11);
-char txrxbuffer[255];
 
-char get_readID[] = { 0xAA , 0x00, 0x03, 0x25, 0x26, 0x00, 0x00, 0xBB };
-char nothing[] =    { 0xAA , 0x00, 0x02, 0x01, 0x83, 0x80, 0xBB }; //
+const char getReadID[] =  { 0xAA , 0x00, 0x03, 0x25, 0x26, 0x00, 0x00, 0xBB };
+const char nothing[] =    { 0xAA , 0x00, 0x02, 0x01, 0x83, 0x80, 0xBB }; //
 
-//AA0218380BB
+#define GET_READ_ID_LEN   (sizeof(getReadID) / sizeof(getReadID[0]))
+#define NOTHING_LEN       (sizeof(nothing) / sizeof(nothing[0]))
+#define RFID_DATA_LEN     13
 
-char incomingData[13];
+#define THROTTLE_DELAY    300
+#define REPEAT_DELAY      5000
 
-char sendData[13];
 
-void setup() {
+char incomingData[RFID_DATA_LEN];
+char sendData[RFID_DATA_LEN];
 
+unsigned long timePoint = 0;
+unsigned long timeClearPoint = 0;
+
+void setup() 
+{
   Serial1.begin(9600);
-
-//  setupUDP();
-
-//  delay(1000);
-
   mySerial.begin(9600);
+  pinMode(LED_PIN, OUTPUT);
 }
 
-unsigned int time_point = 0;
 
-unsigned int timeClearPoint = 0;
-
-
-
-
-void loop() {
-
+void loop() 
+{
   while (Serial1.available())
-  {
     Serial1.read(); //clear buffer
-  }
 
-  // send an UDP packet in every 1 second
-  if ((millis() - time_point) > 300) {
+  // send an UDP packet periodically
+  if (millis() - timePoint > THROTTLE_DELAY) {
 
     readRfidData();
 
-    if ((memcmp(sendData, incomingData, sizeof(incomingData))) && (memcmp(incomingData, nothing, sizeof(nothing))))
-    {
-      memcpy(sendData, incomingData, sizeof(incomingData));
+    bool dataDiffers = memcmp(sendData, incomingData, RFID_DATA_LEN);
+    bool hasData = memcmp(incomingData, nothing, NOTHING_LEN);
 
-      for (int i = 0; i < sizeof(incomingData); ++i)
-      {
+    if (dataDiffers && hasData) {
+      memcpy(sendData, incomingData, RFID_DATA_LEN);
+
+      for (int i = 0; i < RFID_DATA_LEN; ++i)
         Serial1.print(sendData[i], HEX);
-      }
+
       Serial1.print("\r\n");
     }
 
-    time_point = millis();
+    timePoint = millis();
 
-    digitalWrite(13, !digitalRead(13));
+    digitalWrite(LED_PIN, !digitalRead(LED_PIN));
   }
 
-if (millis() - timeClearPoint > 5000)   // clear stored data after 5 sec
-{
-  memset(sendData, 0, sizeof(sendData));
-  timeClearPoint = millis();
-}
-
+  if (millis() - timeClearPoint > REPEAT_DELAY) { 
+    // clear stored data after to repeat send
+    memset(sendData, 0, RFID_DATA_LEN);
+    timeClearPoint = millis();
+  }
 }
 
 
 void readRfidData()
 {
-
-  for (int counter = 0 ; counter < 8 ; counter++) {
-    mySerial.write(get_readID[counter]);
-  }
+  for (int counter = 0; counter < GET_READ_ID_LEN; ++counter)
+    mySerial.write(getReadID[counter]);
 
   while (!mySerial.available())
-  {
     ;
-  }
 
-  for (int i = 0; (i < sizeof(incomingData)) && (mySerial.available()); ++i)
-  {
-    incomingData[i] = mySerial.read();
-  }
-  while ((mySerial.available()))
-  {
+  delay(10); // wait for RX buffer fill up
+
+  int i = 0;
+  while (mySerial.available() && i < RFID_DATA_LEN)
+      incomingData[i++] = mySerial.read();
+
+  while (mySerial.available())
     mySerial.read(); //clear buffer
-  }
-
 }
-
