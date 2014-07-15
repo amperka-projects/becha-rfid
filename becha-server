@@ -1,4 +1,4 @@
-#!/usr/bin/ruby19
+#!/usr/bin/ruby
 
 require 'pathname'
 require 'optparse'
@@ -6,7 +6,6 @@ require 'optparse/time'
 require 'ostruct'
 require 'socket'
 require 'yaml'
-require 'mplayer-ruby'
 
 ARGV_COUNT = 1
 
@@ -27,7 +26,7 @@ class Pathname
   end
 end
 
-APP_VERSION = 'BECHA-server v0.1'
+APP_VERSION = 'BECHA-server v1.0.0'
 
 def parse_options(args)
     options = OpenStruct.new
@@ -39,22 +38,27 @@ def parse_options(args)
       "  record track-path\t\t- Record track into the tape recorder"
 
       options.verbose = false
-      options.playlist_path = Pathname.new 'becha-playlist.conf'
-      options.log_path = Pathname.new '/var/log/becha.log'
-      options.errlog_path = Pathname.new '/var/log/becha.error.log'
+      options.playlist_path = Pathname.new('./becha.playlist.conf').expand_path
+      options.log_path = Pathname.new('./becha.log').expand_path
+      options.errlog_path = Pathname.new('./becha.error.log').expand_path
+      options.port = 2014
 
       opts.separator ""
       opts.separator "Common options:"
 
-      opts.on("-p", "--playlist path", String, "Define playlist information") do |path|
+      opts.on("-l", "--playlist path", String, "Define playlist information") do |path|
         options.playlist_path = Pathname.new path
       end
 
-      opts.on("-l", "--log path", String, "Define log file") do |path|
+      opts.on("-p", "--port num", Integer, "Define UDP port number") do |port|
+        options.port = port
+      end
+
+      opts.on("-e", "--log path", String, "Define log file") do |path|
         options.log_path = Pathname.new path
       end
 
-      opts.on("-L", "--errlog path", String, "Define log file for errors") do |path|
+      opts.on("-E", "--errlog path", String, "Define log file for errors") do |path|
         options.errlog_path = Pathname.new path
       end
 
@@ -113,15 +117,16 @@ when 'power-on'
   STDERR.sync = true
 
   sock = UDPSocket.new
-  sock.bind '', 2000
+  sock.bind '', options.port
 
   puts "[#{Time.now}] Server started!"
 
   loop do
-    packet = sock.recvfrom 24
+    packet = sock.recvfrom 32 
 
     if packet[0] == "quit"
       puts "[#{Time.now}] Exiting..."
+      Process.kill "KILL", $mplayer_pid unless $mplayer_pid.nil?
       exit 0
     end
 
@@ -131,22 +136,25 @@ when 'power-on'
       puts "[#{Time.now}] Start playing: #{playlist[packet[0].to_s]}"
 
       begin
-        $mplayer.quit unless $mplayer.nil?
-        $mplayer = MPlayer::Slave.new "#{playlist[packet[0].to_s]}"
+        Process.kill "KILL", $mplayer_pid unless $mplayer_pid.nil?
+        $mplayer_pid = fork do
+          `mplayer "#{playlist[packet[0].to_s]}"`
+        end
       rescue => error
         puts 'Error playing'
         p error
         p "#{playlist[packet[0].to_s]}"
-        $mplayer = nil
+        $mplayer_pid = nil
       end
 
     else
       puts "[#{Time.now}] Item not found"
 
       begin
-        $mplayer.quit unless $mplayer.nil?
+        Process.kill "KILL", $mplayer_pid unless $mplayer_pid.nil?
+        $mplayer_pid = nil
       rescue
-        $mplayer = nil
+        $mplayer_pid = nil
       end
     end
   end
