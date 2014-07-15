@@ -32,9 +32,9 @@ Requirements
 Getting Help
 ============
 
-* Take a look at `Wiki page <http://wiki.amperka.ru/becha-rfid>`_.
+* Take a look at `Wiki page <http://wiki.amperka.ru/becha-rfid>`.
 * Help for BECHA-server provided by ``becha-server --help``.
-* Post `issues to GitHub <http://github.com/amperka-projects/becha-rfid/issues>`_.
+* Post `issues to GitHub <http://github.com/amperka-projects/becha-rfid/issues>`.
 
 License
 =======
@@ -44,11 +44,11 @@ BECHA-rfid is distributed in terms of MIT software license.
 Contributors
 ============
 
-* `Vasiliy ACos <https://github.com/acosinwork>`_.
-* `Artem ALev Levenkov <https://github.com/levenkov>`_.
+* `Vasiliy ACos <https://github.com/acosinwork>`.
+* `Artem ALev Levenkov <https://github.com/levenkov>`.
 
 Changelog
 =========
 
 1.0.0 (15.07.14)
-    * Basic functionality done
+* Basic functionality done
