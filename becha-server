@@ -7,7 +7,6 @@ require 'ostruct'
 require 'socket'
 require 'yaml'
 
-ARGV_COUNT = 1
 
 class Pathname
   def extname= (extension)
@@ -26,7 +25,10 @@ class Pathname
   end
 end
 
+
 APP_VERSION = 'BECHA-server v1.0.0'
+ARGV_COUNT = 1
+
 
 def parse_options(args)
     options = OpenStruct.new
@@ -35,6 +37,7 @@ def parse_options(args)
       opts.banner = "Usage: becha-server [options] cmd [args]\n\n" +
       "Avalaible commands:\n" +
       "  power-on\t\t- Power ON the tape recorder\n" +
+      "  power-off\t\t- Power OFF the tape recorder\n" +
       "  record track-path\t\t- Record track into the tape recorder"
 
       options.verbose = false
@@ -158,8 +161,10 @@ when 'power-on'
       end
     end
   end
-  loop do
-  end
+  loop { } 
+when 'power-off'
+  sock = UDPSocket.new
+  sock.send 'quit', 0, 'localhost', options.port
 when 'record'
   playlist_path = Pathname.new options.playlist_path.expand_path
   begin
