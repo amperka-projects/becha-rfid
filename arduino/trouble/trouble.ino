@@ -5,40 +5,60 @@ We use Arduino Leonardo
 #include <SoftwareSerial.h>
 
 #define UDP_HOST_IP        "192.168.10.159"
-#define UDP_REMOTE_PORT    2014
-#define UDP_LOCAL_PORT     2014
+#define UDP_REMOTE_PORT    "2014"
+#define UDP_LOCAL_PORT     "2014"
 
-#define MY_SSID "Amperka.ru"
+#define MY_SSID            "Amperka.ru"
+#define MY_PASSWORD        "password"
+#define MY_WIFI_CHANNEL    "6"
 
-/*
-void setupUDP()
+
+void setupWiFly()
 {
-  Serial1.print("$$$");
-  delay(100);
-  Serial1.println("set ip proto 1");           // enable UDP as the protocol
-  delay(100);
+  delay(1000);
 
-  Serial1.print("set ip host "); // set the IP address of remote host
-  Serial1.println(UDP_HOST_IP);
-  delay(100);
+  readWiFlyMessages();
 
-  Serial1.print("set ip remote ");     // set the remote port number on which the host is listening
-  Serial1.println(UDP_REMOTE_PORT);
-  delay(100);
+  sendWiFlyPreference("$$$");
+  sendWiFlyPreference("set ip proto 1");                      // enable UDP as the protocol
+  sendWiFlyPreference("set ip host "   UDP_HOST_IP     "\n"); // set the IP address of remote host
+  sendWiFlyPreference("set ip remote " UDP_REMOTE_PORT "\n"); // set the remote port number on which the host is listening
+  sendWiFlyPreference("set ip local "  UDP_LOCAL_PORT  "\n"); // set the port number on which the WiFly module will listen
+  sendWiFlyPreference("save");                                // saves the settings in config file
+  sendWiFlyPreference("reboot");                              // reboots the module so that the above settings take effect
 
-  Serial1.print("set ip local ");      // set the port number on which the WiFly module will listen
-  Serial1.println(UDP_LOCAL_PORT);
-  delay(100);
-
-  Serial1.println("save");                     // saves the settings in config file
-  delay(100);
-
-  Serial1.println("reboot");                   // reboots the module so that the above settings take effect
-  delay(100);
-
+  delay(1000);
+  
+  readWiFlyMessages();
 }
 
-*/
+void sendWiFlyPreference(const char *preferenceText)
+{
+  Serial1.print(preferenceText);
+
+  if (Serial) {
+    Serial.println("");
+    Serial.print("> ");
+    Serial.println(preferenceText);
+  }
+  
+  while (!Serial1.available())
+    ;
+
+  delay(10);
+
+  readWiFlyMessages();
+}
+
+void readWiFlyMessages()
+{
+  while (Serial1.available()) {
+    if (Serial)
+      Serial.write(Serial1.read());
+    else
+      Serial1.read();
+  }
+}
 
 SoftwareSerial mySerial(10, 11);
 //char txrxbuffer[255];
@@ -82,8 +102,7 @@ unsigned int iterCounter = 0;
 
 void loop() {
 
-  while (Serial1.available())
-  {
+  while (Serial1.available()) {
     Serial1.read(); //clear buffer
   }
 
