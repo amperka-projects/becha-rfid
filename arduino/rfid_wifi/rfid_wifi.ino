@@ -4,13 +4,22 @@ We use Arduino Leonardo
 
 #include <SoftwareSerial.h>
 
+#define MY_SSID            "Amperka.ru"
+#define MY_PASSWORD        "password"
+#define MY_WIFI_CHANNEL    "6"
+
+#define MY_SECURITY_WPA_TKIP    "2"
+#define MY_SECURITY_WPA_MIXED   "3"
+#define MY_SECURITY_WPA2_AES    "4"
+
+#define JOIN_MODE_MANUAL   "0"
+#define JOIN_MODE_AUTO     "1"
+
 #define UDP_HOST_IP        "192.168.10.159"
-#define UDP_REMOTE_PORT    2014
-#define UDP_LOCAL_PORT     2014
+#define UDP_REMOTE_PORT    "2014"
+#define UDP_LOCAL_PORT     "2014"
 
-#define MY_SSID "Amperka.ru"
 #define LED_PIN 13
-
 
 SoftwareSerial mySerial(10, 11);
 
@@ -91,3 +100,64 @@ void readRfidData()
   while (mySerial.available())
     mySerial.read(); //clear buffer
 }
+
+
+void setupWiFly()
+{
+  delay(1000);
+
+  readWiFlyMessages();
+
+// command mode
+  sendWiFlyPreference("$$$");
+
+// wi-fi settings
+  sendWiFlyPreference("set wlan join "    JOIN_MODE_AUTO       "\n");
+  sendWiFlyPreference("set wlan ssid "    MY_SSID              "\n");
+  sendWiFlyPreference("set wlan auth "    MY_SECURITY_WPA_TKIP "\n");
+  sendWiFlyPreference("set wlan phrase "  MY_PASSWORD          "\n");
+  sendWiFlyPreference("set wlan channel " MY_WIFI_CHANNEL      "\n");
+
+// network settings
+  sendWiFlyPreference("set ip proto 1");                      // enable UDP as the protocol
+  sendWiFlyPreference("set ip host "   UDP_HOST_IP     "\n"); // set the IP address of remote host
+  sendWiFlyPreference("set ip remote " UDP_REMOTE_PORT "\n"); // set the remote port number on which the host is listening
+  sendWiFlyPreference("set ip local "  UDP_LOCAL_PORT  "\n"); // set the port number on which the WiFly module will listen
+
+// save new settings
+  sendWiFlyPreference("save\n");                                // saves the settings in config file
+  sendWiFlyPreference("reboot\n");                              // reboots the module so that the above settings take effect
+
+  delay(1000);
+
+  readWiFlyMessages();
+}
+
+void sendWiFlyPreference(const char *preferenceText)
+{
+  Serial1.print(preferenceText);
+
+  if (Serial) {
+    Serial.println("");
+    Serial.print("> ");
+    Serial.println(preferenceText);
+  }
+
+  while (!Serial1.available())
+    ;
+
+  delay(10);
+
+  readWiFlyMessages();
+}
+
+void readWiFlyMessages()
+{
+  while (Serial1.available()) {
+    if (Serial)
+      Serial.write(Serial1.read());
+    else
+      Serial1.read();
+  }
+}
+
