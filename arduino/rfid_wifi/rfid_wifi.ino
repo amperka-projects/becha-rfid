@@ -2,32 +2,25 @@
 We use Arduino Leonardo
 */
 
-#include <SoftwareSerial.h>
-
 #define WIFI_DEBUG
 
+#include <SoftwareSerial.h>
+#include <WiFly.h>
+
 // Wi-Fi preference
-#define COMMAND_MODE_ENRTERING  "$$$"
-#define COMMAND_MODE_DELAY      500
 
-#define MY_SSID                 "Amperka.ru"
-#define MY_PASSWORD             "mega2560"
-#define AUTO_WIFI_CHANNEL       "0"
+#define SSID      "Amperka.ru"
+#define KEY       "mega2560"
+// WIFLY_AUTH_OPEN / WIFLY_AUTH_WPA1 / WIFLY_AUTH_WPA1_2 / WIFLY_AUTH_WPA2_PSK
+#define AUTH      WIFLY_AUTH_WPA1_2
 
-#define SECURITY_WPA_TKIP       "2"
-#define SECURITY_WPA_MIXED      "3"
-#define SECURITY_WPA2_AES       "4"
-#define SECURITY                SECURITY_WPA_MIXED
+#define UDP_HOST_IP        "192.168.10.159"
+#define UDP_REMOTE_PORT    2014
+#define UDP_LOCAL_PORT     2014
 
-#define JOIN_MODE_MANUAL        "0"
-#define JOIN_MODE_AUTO          "1"
-#define JOIN_MODE               JOIN_MODE_AUTO
+WiFly wifly(Serial1);
 
-#define UDP_HOST_IP             "192.168.10.159"
-#define UDP_REMOTE_PORT         "2014"
-#define UDP_LOCAL_PORT          "2014"
-
-SoftwareSerial mySerial(10, 11);
+SoftwareSerial rfidReader(10, 11);
 
 const char getReadID[] =  { 0xAA , 0x00, 0x03, 0x25, 0x26, 0x00, 0x00, 0xBB };
 const char nothing[] =    { 0xAA , 0x00, 0x02, 0x01, 0x83, 0x80, 0xBB }; //
@@ -51,18 +44,19 @@ unsigned long timeClearPoint = 0;
 void setup()
 {
   Serial1.begin(9600);
-  mySerial.begin(9600);
-  pinMode(LED_PIN, OUTPUT);
+
+  rfidReader.begin(9600);
+
+  Serial.begin(9600);
 
 #ifdef WIFI_DEBUG
-  Serial.begin(9600);
-  while (!Serial.available())
-  {
-    delay(10);
-  }
+  while (!Serial)
+    ;
 #endif
-
   setupWiFly();
+
+  pinMode(LED_PIN, OUTPUT);
+
 }
 
 
@@ -104,84 +98,60 @@ void loop()
 void readRfidData()
 {
   for (int counter = 0; counter < GET_READ_ID_LEN; ++counter)
-    mySerial.write(getReadID[counter]);
+    rfidReader.write(getReadID[counter]);
 
-  while (!mySerial.available())
+  while (!rfidReader.available())
     ;
 
   delay(10); // wait for RX buffer fill up
 
   int i = 0;
-  while (mySerial.available() && i < RFID_DATA_LEN)
-    incomingData[i++] = mySerial.read();
+  while (rfidReader.available() && i < RFID_DATA_LEN)
+    incomingData[i++] = rfidReader.read();
 
-  while (mySerial.available())
-    mySerial.read(); //clear buffer
+  while (rfidReader.available())
+    rfidReader.read(); //clear buffer
 }
 
 
 void setupWiFly()
 {
-//  delay(1000);
+  Serial.println("--------- WIFLY UDP --------");
 
-  readWiFlyMessages();
+  wifly.reset();
 
-  // command mode
-  sendWiFlyPreference(COMMAND_MODE_ENRTERING);
-
-  // wait command mode
-  delay(COMMAND_MODE_DELAY);
-
-  // wi-fi settings
-  sendWiFlyPreference("set wlan ssid "    MY_SSID              "\r");
-  sendWiFlyPreference("set wlan phrase "  MY_PASSWORD          "\r");
-
-  sendWiFlyPreference("set wlan join "    JOIN_MODE            "\r");
-  sendWiFlyPreference("set wlan auth "    SECURITY             "\r");
-  sendWiFlyPreference("set wlan channel " AUTO_WIFI_CHANNEL    "\r");
-
-  // network settings
-  sendWiFlyPreference("set ip proto 1");                      // enable UDP as the protocol
-  sendWiFlyPreference("set ip host "   UDP_HOST_IP     "\r"); // set the IP address of remote host
-  sendWiFlyPreference("set ip remote " UDP_REMOTE_PORT "\r"); // set the remote port number on which the host is listening
-  sendWiFlyPreference("set ip local "  UDP_LOCAL_PORT  "\r"); // set the port number on which the WiFly module will listen
-
-  // save new settings
-  sendWiFlyPreference("save\r");                                // saves the settings in config file
-  sendWiFlyPreference("reboot\r");                              // reboots the module so that the above settings take effect
-
-//  delay(1000);
-
-  readWiFlyMessages();
-}
-
-void sendWiFlyPreference(const char *preferenceText)
-{
-  Serial1.print(preferenceText);
-//  Serial1.flush();
-
-  if (Serial) {
-    Serial.println("");
-    Serial.print("> ");
-//    Serial.println(preferenceText);
+  while (1) {
+    Serial.println("Try to join " SSID );
+    if (wifly.join(SSID, KEY, AUTH)) {
+      Serial.println("Succeed to join " SSID);
+      wifly.clear();
+      break;
+    } else {
+      Serial.println("Failed to join " SSID);
+      Serial.println("Wait 1 second and try again...");
+      delay(1000);
+    }
   }
 
-  while (!Serial1.available())
-    delay(20);
+  setupUDP(UDP_HOST_IP, UDP_REMOTE_PORT, UDP_REMOTE_PORT);
 
-  delay(10);
-
-  readWiFlyMessages();
+  delay(1000);
+  wifly.clear();
 }
 
-void readWiFlyMessages()
+void setupUDP(const char *host_ip, uint16_t remote_port, uint16_t local_port)
 {
-  while (Serial1.available()) {
-    delay(10);
-    if (Serial)
-      Serial.write(Serial1.read());
-    else
-      Serial1.read();
-  }
-}
+  char cmd[32];
 
+  wifly.sendCommand("set w j 1\r", "AOK");   // enable auto join
+
+  wifly.sendCommand("set i p 1\r", "AOK");
+  snprintf(cmd, sizeof(cmd), "set i h %s\r", host_ip);
+  wifly.sendCommand(cmd, "AOK");
+  snprintf(cmd, sizeof(cmd), "set i r %d\r", remote_port);
+  wifly.sendCommand(cmd, "AOK");
+  snprintf(cmd, sizeof(cmd), "set i l %d\r", local_port);
+  wifly.sendCommand(cmd, "AOK");
+  wifly.sendCommand("save\r");
+  wifly.sendCommand("reboot\r");
+}
