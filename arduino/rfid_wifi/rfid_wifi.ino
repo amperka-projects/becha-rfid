@@ -9,8 +9,8 @@ We use Arduino Leonardo
 
 // Wi-Fi preference
 
-#define SSID      "Amperka.ru" //your SSID
-#define KEY       "mega2560"   //your wi-fi password
+#define SSID      "MySSID" //your SSID
+#define KEY       "MyWifiPassword"   //your wi-fi password
 // WIFLY_AUTH_OPEN / WIFLY_AUTH_WPA1 / WIFLY_AUTH_WPA1_2 / WIFLY_AUTH_WPA2_PSK
 #define AUTH      WIFLY_AUTH_WPA1_2
 

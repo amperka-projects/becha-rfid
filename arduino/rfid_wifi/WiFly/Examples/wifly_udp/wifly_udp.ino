@@ -1,11 +1,12 @@
 
+#include <Arduino.h>
 #include <SoftwareSerial.h>
 #include "WiFly.h"
 
-#define SSID      "Amperka.ru"
-#define KEY       "mega2560"
+#define SSID      "Your-SSID"
+#define KEY       "passphrase"
 // WIFLY_AUTH_OPEN / WIFLY_AUTH_WPA1 / WIFLY_AUTH_WPA1_2 / WIFLY_AUTH_WPA2_PSK
-#define AUTH      WIFLY_AUTH_WPA1_2
+#define AUTH      WIFLY_AUTH_WPA2_PSK
 
 #define UDP_HOST_IP        "255.255.255.255"      // broadcast
 #define UDP_REMOTE_PORT    55555
@@ -15,15 +16,15 @@
 // Arduino       WiFly
 //  2    <---->    TX
 //  3    <---->    RX
-//SoftwareSerial uart(2, 3);
-WiFly wifly(Serial1);
+SoftwareSerial uart(2, 3);
+WiFly wifly(uart);
 
 void setupUDP(const char *host_ip, uint16_t remote_port, uint16_t local_port)
 {
   char cmd[32];
-
+  
   wifly.sendCommand("set w j 1\r", "AOK");   // enable auto join
-
+  
   wifly.sendCommand("set i p 1\r", "AOK");
   snprintf(cmd, sizeof(cmd), "set i h %s\r", host_ip);
   wifly.sendCommand(cmd, "AOK");
@@ -38,15 +39,11 @@ void setupUDP(const char *host_ip, uint16_t remote_port, uint16_t local_port)
 void setup() {
 
   Serial.begin(9600);
-
-  while (!Serial.available())
-    delay(10);
-
   Serial.println("--------- WIFLY UDP --------");
-
-  Serial1.begin(9600);     // WiFly UART Baud Rate: 9600
+  
+  uart.begin(9600);     // WiFly UART Baud Rate: 9600
   wifly.reset();
-
+  
   while (1) {
     Serial.println("Try to join " SSID );
     if (wifly.join(SSID, KEY, AUTH)) {
@@ -59,9 +56,9 @@ void setup() {
       delay(1000);
     }
   }
-
+  
   setupUDP(UDP_HOST_IP, UDP_REMOTE_PORT, UDP_REMOTE_PORT);
-
+  
   delay(1000);
   wifly.clear();
 }
@@ -72,11 +69,11 @@ void loop() {
   if (wifly.available()) {
     Serial.print((char)wifly.read());
   }
-
+  
   // send an UDP packet in every 10 second
   if ((millis() - time_point) > 10000) {
     time_point = millis();
-
+    
     wifly.send("I'm wifly, I'm living\r\n");
   }
 }
