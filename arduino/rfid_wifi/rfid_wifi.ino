@@ -2,7 +2,7 @@
 We use Arduino Leonardo
 */
 
-#define WIFI_DEBUG
+//#define WIFI_DEBUG
 
 #include <SoftwareSerial.h>
 #include <WiFly.h>
