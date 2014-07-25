@@ -2,9 +2,9 @@
 BECHA RFID tape
 ===
 
-Idea
+Intro
 ====
-![alt tag](https://github.com/amperka-projects/becha-rfid/blob/master/misc/3s-ge-small.png)
+![alt tag](https://github.com/amperka-projects/becha-rfid/blob/master/misc/becha-idea.png)
 
 
 Installation
@@ -24,9 +24,8 @@ Preparing Raspberry Pi:
 * Record tracks: `bechad record <path-to-track>`
 * Start server: `bechad start`
 * To stop server: `bechad stop`
-
-Preparing RFID remote control:
-* TODO: Hello, Vasya!
+* To build RFID remote control:
+  * !TODO!
 
 Requirements
 ============
