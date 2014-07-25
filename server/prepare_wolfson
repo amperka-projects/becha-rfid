@@ -1,0 +1,25 @@
+#!/bin/env ruby
+
+require 'pathname'
+
+ASOUNDRC = Pathname.new('~/.asoundrc').expand_path
+
+WOLFSON_CONFIG = "defaults.pcm.card 0\n" <<
+                 "defaults.pcm.device 1\n" <<
+                 "defaults.ctl.card 0\n"
+
+
+raise ArgumentError, 'Sufficient permissions' unless ASOUNDRC.exist? && ASOUNDRC.writable_real? or
+                                                    ASOUNDRC.dirname.writable_real?
+
+res = IO.write ASOUNDRC, WOLFSON_CONFIG 
+
+exit 0 if res == WOLFSON_CONFIG.length
+
+puts '~/.asoundrc file updated'
+
+
+`sudo apt-get install ruby`
+`sudo gem install bechad`
+
+exit 1

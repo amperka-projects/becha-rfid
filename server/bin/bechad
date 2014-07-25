@@ -26,42 +26,47 @@ class Pathname
 end
 
 
-APP_VERSION = 'BECHA-server v1.0.0'
+APP_VERSION = 'BECHA-server v1.0.4'
 ARGV_COUNT = 1
+
+DEFAULT_PLAYLIST_PATH = './becha.playlist.conf'
+DEFAULT_LOG_PATH       = './becha.log'
+DEFAULT_ERRLOG_PATH    = './becha.error.log'
+DEFAULT_PORT          = 2014 
 
 
 def parse_options(args)
     options = OpenStruct.new
 
     opt_parser = OptionParser.new do |opts|
-      opts.banner = "Usage: becha-server [options] cmd [args]\n\n" +
+      opts.banner = "Usage: bechad [options] cmd [args]\n\n" +
       "Avalaible commands:\n" +
-      "  power-on\t\t- Power ON the tape recorder\n" +
-      "  power-off\t\t- Power OFF the tape recorder\n" +
+      "  start\t\t- Power ON the tape recorder\n" +
+      "  stop\t\t- Power OFF the tape recorder\n" +
       "  record track-path\t\t- Record track into the tape recorder"
 
       options.verbose = false
-      options.playlist_path = Pathname.new('./becha.playlist.conf').expand_path
-      options.log_path = Pathname.new('./becha.log').expand_path
-      options.errlog_path = Pathname.new('./becha.error.log').expand_path
-      options.port = 2014
+      options.playlist_path = Pathname.new(DEFAULT_PLAYLIST_PATH).expand_path
+      options.log_path = Pathname.new(DEFAULT_LOG_PATH).expand_path
+      options.errlog_path = Pathname.new(DEFAULT_ERRLOG_PATH).expand_path
+      options.port = DEFAULT_PORT
 
       opts.separator ""
       opts.separator "Common options:"
 
-      opts.on("-l", "--playlist path", String, "Define playlist information") do |path|
+      opts.on("-l", "--playlist path", String, "Define playlist path (default - " + DEFAULT_PLAYLIST_PATH.to_s + ")") do |path|
         options.playlist_path = Pathname.new path
       end
 
-      opts.on("-p", "--port num", Integer, "Define UDP port number") do |port|
+      opts.on("-p", "--port num", Integer, "Define UDP port number (default - " + DEFAULT_PORT.to_s + ")") do |port|
         options.port = port
       end
 
-      opts.on("-e", "--log path", String, "Define log file") do |path|
+      opts.on("-e", "--log path", String, "Define log file (default - " + DEFAULT_LOG_PATH.to_s + ")") do |path|
         options.log_path = Pathname.new path
       end
 
-      opts.on("-E", "--errlog path", String, "Define log file for errors") do |path|
+      opts.on("-E", "--errlog path", String, "Define log file for errors (default - " + DEFAULT_ERRLOG_PATH.to_s + ")") do |path|
         options.errlog_path = Pathname.new path
       end
 
@@ -100,7 +105,7 @@ cmd = argv.pop
 
 
 case cmd
-when 'power-on'
+when 'start'
   playlist_path = Pathname.new(options.playlist_path.expand_path)
   playlist = YAML::load(IO.read playlist_path.expand_path)
 
@@ -162,7 +167,7 @@ when 'power-on'
     end
   end
   loop { } 
-when 'power-off'
+when 'stop'
   sock = UDPSocket.new
   sock.send 'quit', 0, 'localhost', options.port
 when 'record'
@@ -182,10 +187,10 @@ when 'record'
   track_path = Pathname.new(track_path).expand_path
 
   sock = UDPSocket.new
-  sock.bind '', 2000
+  sock.bind '', options.port
 
   loop do
-    packet = sock.recvfrom 24
+    packet = sock.recvfrom 32
 
     if packet[0].length == 0
       puts "Received error packet, retrying..."
