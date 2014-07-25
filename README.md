@@ -2,6 +2,11 @@
 BECHA RFID tape
 ===
 
+Idea
+====
+![alt tag](https://github.com/amperka-projects/becha-rfid/blob/master/misc/3s-ge-small.png)
+
+
 Installation
 ============
 
