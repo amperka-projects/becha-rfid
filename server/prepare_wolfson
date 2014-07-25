@@ -1,4 +1,4 @@
-#!/bin/env ruby
+#!/usr/bin/env ruby
 
 require 'pathname'
 
@@ -17,9 +17,5 @@ res = IO.write ASOUNDRC, WOLFSON_CONFIG
 exit 0 if res == WOLFSON_CONFIG.length
 
 puts '~/.asoundrc file updated'
-
-
-`sudo apt-get install ruby`
-`sudo gem install bechad`
 
 exit 1
