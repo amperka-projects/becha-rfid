@@ -9,12 +9,16 @@ Preparing Raspberry Pi:
 * Burn Wolfson's Linux image to SD card
 * Insert SD into Raspberry Pi, connect board to net
 * Login to RPi by SSH (default login: pi, password: raspberry)
-* Install Ruby by invoking command `apt-get install ruby`
+* Install Ruby by invoking command `sudo apt-get install ruby`
 * Clone that repository (`git clone https://github.com/amperka-projects/becha-rfid`)
 * `cd ./becha-rfid`
-* Record tracks: `./becha-server record <path-to-track>`
-* Start server: `./becha-server power-on`
-* To stop server: `./becha-server power-off`
+* To install server:
+  * `cd ./server`
+  * `./prepare_wolfson`
+  * `sudo gem install bechad`
+* Record tracks: `bechad record <path-to-track>`
+* Start server: `bechad start`
+* To stop server: `bechad stop`
 
 Preparing RFID remote control:
 * TODO: Hello, Vasya!
@@ -22,7 +26,7 @@ Preparing RFID remote control:
 Requirements
 ============
 
-* 8 GB SD card
+* ⩾4,5 GB SD card
 * Raspberry Pi B
 * Arduino Leonardo
 * WiFi-shield for Arduino
@@ -33,7 +37,7 @@ Getting Help
 ============
 
 * Take a look at `Wiki page <http://wiki.amperka.ru/becha-rfid>`.
-* Help for BECHA-server provided by ``becha-server --help``.
+* Help for BECHA-server provided by ``bechad --help``.
 * Post `issues to GitHub <http://github.com/amperka-projects/becha-rfid/issues>`.
 
 License
@@ -49,6 +53,11 @@ Contributors
 
 Changelog
 =========
+
+1.0.4 (25.07.14)
+* becha-server renamed to bechad
+* bechad pushed on rubygems, so you can install it by `gem install bechad`
+* Bug fixes.
 
 1.0.0 (15.07.14)
 * Basic functionality done
